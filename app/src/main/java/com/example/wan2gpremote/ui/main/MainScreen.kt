@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -27,12 +29,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.wan2gpremote.data.preferences.SettingsStore
+import com.example.wan2gpremote.data.storage.GalleryStorage
 import com.example.wan2gpremote.domain.ModelType
 import com.example.wan2gpremote.ui.components.OptionCard
 import com.example.wan2gpremote.ui.components.StringField
 import com.example.wan2gpremote.ui.models.AceModelSection
 import com.example.wan2gpremote.ui.models.FluxModelSection
 import com.example.wan2gpremote.ui.models.LtxModelSection
+import com.example.wan2gpremote.viewmodel.GenerationRunState
 import com.example.wan2gpremote.viewmodel.GenerationViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +45,10 @@ fun MainScreen() {
     val context = LocalContext.current
     val snackbars = remember { SnackbarHostState() }
     val vm: GenerationViewModel = viewModel(
-        factory = GenerationViewModel.Factory(SettingsStore(context.applicationContext))
+        factory = GenerationViewModel.Factory(
+            SettingsStore(context.applicationContext),
+            GalleryStorage(context.applicationContext)
+        )
     )
     val uiState by vm.uiState.collectAsState()
 
@@ -87,11 +94,48 @@ fun MainScreen() {
                 ModelType.ACE_STEP_15 -> AceModelSection(uiState.settings.ace, vm::updateAceOptions)
             }
 
+            OptionCard("Generation Status") {
+                when (val runState = uiState.runState) {
+                    GenerationRunState.Idle -> Text("Idle")
+                    is GenerationRunState.Submitting -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator()
+                            Text(runState.message)
+                        }
+                    }
+                    is GenerationRunState.Running -> {
+                        Text("Running job: ${runState.jobId} (${runState.status})")
+                        runState.progress?.let {
+                            LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth())
+                        } ?: CircularProgressIndicator()
+                        Button(onClick = vm::cancelRunningJob) { Text("Cancel") }
+                    }
+                    is GenerationRunState.Completed -> {
+                        Text("Completed job: ${runState.jobId}")
+                        Text("Saved assets: ${runState.savedAssets.size}")
+                    }
+                    is GenerationRunState.Failed -> {
+                        Text("Failed: ${runState.message}", color = MaterialTheme.colorScheme.error)
+                        if (runState.canRetry) {
+                            Button(onClick = vm::retryFailedJob) { Text("Retry") }
+                        }
+                    }
+                }
+            }
+
             Button(
-                onClick = vm::testConnectionPayload,
+                onClick = vm::submitGeneration,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Test connection payload")
+                Text("Start generation")
+            }
+
+            if (uiState.history.isNotEmpty()) {
+                OptionCard("History") {
+                    uiState.history.forEach { item ->
+                        Text("${item.jobId}: ${item.savedAssets.size} asset(s)")
+                    }
+                }
             }
         }
     }
