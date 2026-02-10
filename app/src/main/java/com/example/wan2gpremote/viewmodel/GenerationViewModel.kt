@@ -9,9 +9,12 @@ import com.example.wan2gpremote.data.repository.GenerationRepository
 import com.example.wan2gpremote.data.storage.GalleryStorage
 import com.example.wan2gpremote.domain.AceStep15Options
 import com.example.wan2gpremote.domain.FluxKlein9bOptions
+import com.example.wan2gpremote.domain.GenerationMode
 import com.example.wan2gpremote.domain.GenerationSettings
 import com.example.wan2gpremote.domain.Ltx2Options
 import com.example.wan2gpremote.domain.ModelType
+import com.example.wan2gpremote.domain.ModeInputOptions
+import com.example.wan2gpremote.domain.supportedModesForModel
 import com.example.wan2gpremote.domain.toPayload
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -81,7 +84,22 @@ class GenerationViewModel(
     }
 
     fun selectModel(modelType: ModelType) {
-        viewModelScope.launch { settingsStore.updateSelectedModel(modelType) }
+        viewModelScope.launch {
+            settingsStore.updateSelectedModel(modelType)
+            val supportedModes = supportedModesForModel(modelType)
+            val currentMode = _uiState.value.settings.selectedMode
+            if (currentMode !in supportedModes) {
+                settingsStore.updateSelectedMode(supportedModes.first())
+            }
+        }
+    }
+
+    fun selectMode(mode: GenerationMode) {
+        viewModelScope.launch { settingsStore.updateSelectedMode(mode) }
+    }
+
+    fun updateModeInputs(mode: GenerationMode, inputs: ModeInputOptions) {
+        viewModelScope.launch { settingsStore.updateModeInputs(mode, inputs) }
     }
 
     fun updateLtxOptions(options: Ltx2Options) {
@@ -100,12 +118,12 @@ class GenerationViewModel(
         runningJob?.cancel()
         runningJob = viewModelScope.launch {
             val state = _uiState.value
-            val payload = state.settings.toPayload()
             val serverIp = state.serverIpDraft
 
             _uiState.update { it.copy(runState = GenerationRunState.Submitting()) }
 
             try {
+                val payload = state.settings.toPayload()
                 val jobId = repository.submitJob(serverIp, payload)
                 _uiState.update { it.copy(runState = GenerationRunState.Running(jobId = jobId, status = "queued")) }
 
@@ -132,6 +150,15 @@ class GenerationViewModel(
                             )
                         }
                     }
+                }
+            } catch (e: IllegalArgumentException) {
+                _uiState.update {
+                    it.copy(
+                        runState = GenerationRunState.Failed(
+                            message = e.message ?: "Invalid mode/model selection",
+                            canRetry = false,
+                        )
+                    )
                 }
             } catch (e: GenerationNetworkException) {
                 _uiState.update {

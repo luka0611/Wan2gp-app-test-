@@ -11,9 +11,11 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.wan2gpremote.domain.AceStep15Options
 import com.example.wan2gpremote.domain.FluxKlein9bOptions
+import com.example.wan2gpremote.domain.GenerationMode
 import com.example.wan2gpremote.domain.GenerationSettings
 import com.example.wan2gpremote.domain.Ltx2Options
 import com.example.wan2gpremote.domain.ModelType
+import com.example.wan2gpremote.domain.ModeInputOptions
 import com.example.wan2gpremote.domain.validated
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -25,6 +27,18 @@ class SettingsStore(private val context: Context) {
         GenerationSettings(
             serverIp = prefs[PrefKeys.SERVER_IP].orEmpty(),
             selectedModel = ModelType.entries.firstOrNull { it.id == prefs[PrefKeys.MODEL] } ?: ModelType.LTX2,
+            selectedMode = GenerationMode.entries.firstOrNull { it.id == prefs[PrefKeys.MODE] } ?: GenerationMode.TxtToVideo,
+            modeInputs = GenerationMode.entries.associateWith { mode ->
+                ModeInputOptions(
+                    prompt = prefs[stringPreferencesKey("${mode.id}_prompt")].orEmpty(),
+                    negativePrompt = prefs[stringPreferencesKey("${mode.id}_negative_prompt")].orEmpty(),
+                    sourceImagePath = prefs[stringPreferencesKey("${mode.id}_source_image")].orEmpty(),
+                    sourceVideoPath = prefs[stringPreferencesKey("${mode.id}_source_video")].orEmpty(),
+                    maskPath = prefs[stringPreferencesKey("${mode.id}_mask")].orEmpty(),
+                    extendSeconds = prefs[intPreferencesKey("${mode.id}_extend_seconds")] ?: 4,
+                    extendFromFrame = prefs[intPreferencesKey("${mode.id}_extend_from_frame")] ?: -1,
+                )
+            },
             ltx2 = Ltx2Options(
                 width = prefs[PrefKeys.LTX_WIDTH] ?: 1024,
                 height = prefs[PrefKeys.LTX_HEIGHT] ?: 576,
@@ -83,6 +97,23 @@ class SettingsStore(private val context: Context) {
         context.dataStore.edit { prefs -> prefs[PrefKeys.MODEL] = modelType.id }
     }
 
+
+    suspend fun updateSelectedMode(mode: GenerationMode) {
+        context.dataStore.edit { prefs -> prefs[PrefKeys.MODE] = mode.id }
+    }
+
+    suspend fun updateModeInputs(mode: GenerationMode, inputs: ModeInputOptions) {
+        context.dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("${mode.id}_prompt")] = inputs.prompt
+            prefs[stringPreferencesKey("${mode.id}_negative_prompt")] = inputs.negativePrompt
+            prefs[stringPreferencesKey("${mode.id}_source_image")] = inputs.sourceImagePath
+            prefs[stringPreferencesKey("${mode.id}_source_video")] = inputs.sourceVideoPath
+            prefs[stringPreferencesKey("${mode.id}_mask")] = inputs.maskPath
+            prefs[intPreferencesKey("${mode.id}_extend_seconds")] = inputs.extendSeconds
+            prefs[intPreferencesKey("${mode.id}_extend_from_frame")] = inputs.extendFromFrame
+        }
+    }
+
     suspend fun updateLtxOptions(options: Ltx2Options) {
         context.dataStore.edit { prefs -> options.validated().toPreferencesUpdate(prefs) }
     }
@@ -108,6 +139,7 @@ class SettingsStore(private val context: Context) {
 private object PrefKeys {
     val SERVER_IP = stringPreferencesKey("server_ip")
     val MODEL = stringPreferencesKey("selected_model")
+    val MODE = stringPreferencesKey("selected_mode")
 
     val LTX_WIDTH = intPreferencesKey("ltx_width")
     val LTX_HEIGHT = intPreferencesKey("ltx_height")

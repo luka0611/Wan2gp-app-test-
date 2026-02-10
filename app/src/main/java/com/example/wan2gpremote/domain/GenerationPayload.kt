@@ -6,7 +6,12 @@ data class GenerationPayload(
 )
 
 fun GenerationSettings.toPayload(): GenerationPayload {
-    val params = when (selectedModel) {
+    require(isModeSupportedByModel(selectedMode, selectedModel)) {
+        "${selectedMode.label} is not supported by ${selectedModel.label}"
+    }
+
+    val modeInputs = modeInputs[selectedMode] ?: ModeInputOptions()
+    val baseModelParams = when (selectedModel) {
         ModelType.LTX2 -> mapOf(
             "width" to ltx2.width,
             "height" to ltx2.height,
@@ -17,10 +22,8 @@ fun GenerationSettings.toPayload(): GenerationPayload {
             "sampler" to ltx2.sampler,
             "scheduler" to ltx2.scheduler,
             "denoise_strength" to ltx2.denoiseStrength,
-            "prompt" to ltx2.prompt,
             "seed" to ltx2.seed,
             "randomize_seed" to ltx2.randomizeSeed,
-            "negative_prompt" to ltx2.negativePrompt,
             "tiling" to ltx2.tiling,
             "upscale" to ltx2.upscale,
             "upscale_factor" to ltx2.upscaleFactor,
@@ -36,8 +39,6 @@ fun GenerationSettings.toPayload(): GenerationPayload {
             "scheduler" to flux.scheduler,
             "strength" to flux.strength,
             "denoise" to flux.denoise,
-            "prompt" to flux.prompt,
-            "negative_prompt" to flux.negativePrompt,
             "seed" to flux.seed,
             "randomize_seed" to flux.randomizeSeed,
             "safety_checker" to flux.safetyChecker,
@@ -58,5 +59,35 @@ fun GenerationSettings.toPayload(): GenerationPayload {
         )
     }
 
-    return GenerationPayload(model = selectedModel.id, parameters = params)
+    val modeParams = modeInputs.toModePayload(selectedMode)
+
+    return GenerationPayload(
+        model = selectedModel.id,
+        parameters = baseModelParams + modeParams + mapOf(
+            "mode" to selectedMode.id,
+            "prompt" to modeInputs.prompt,
+            "negative_prompt" to modeInputs.negativePrompt,
+        )
+    )
+}
+
+private fun ModeInputOptions.toModePayload(mode: GenerationMode): Map<String, Any> = when (mode) {
+    GenerationMode.TxtToImage,
+    GenerationMode.TxtToVideo -> emptyMap()
+
+    GenerationMode.ImgToImg,
+    GenerationMode.ImgToVideo -> mapOf(
+        "source_image" to sourceImagePath,
+    )
+
+    GenerationMode.EditImage -> mapOf(
+        "source_image" to sourceImagePath,
+        "mask_image" to maskPath,
+    )
+
+    GenerationMode.ExtendVideo -> mapOf(
+        "source_video" to sourceVideoPath,
+        "extend_seconds" to extendSeconds,
+        "extend_from_frame" to extendFromFrame,
+    )
 }
