@@ -9,7 +9,6 @@ import com.example.wan2gpremote.ui.components.DropdownField
 import com.example.wan2gpremote.ui.components.FloatSliderField
 import com.example.wan2gpremote.ui.components.IntField
 import com.example.wan2gpremote.ui.components.SectionHeader
-import com.example.wan2gpremote.ui.components.StringField
 
 @Composable
 fun LtxModeForm(options: Ltx2Options, onUpdate: (Ltx2Options) -> Unit) {
@@ -32,14 +31,6 @@ fun LtxModeForm(options: Ltx2Options, onUpdate: (Ltx2Options) -> Unit) {
     FloatSliderField("Denoise Strength (0.0-1.0)", options.denoiseStrength, 0f..1f) {
         onUpdate(options.copy(denoiseStrength = it).validated())
     }
-
-    SectionHeader("Prompting")
-    StringField("Prompt (optional)", options.prompt) { onUpdate(options.copy(prompt = it).validated()) }
-    StringField("Negative Prompt (optional)", options.negativePrompt) {
-        onUpdate(options.copy(negativePrompt = it).validated())
-    }
-    StringField("Seed (optional integer)", options.seed) { onUpdate(options.copy(seed = it).validated()) }
-    BooleanChip("Randomize Seed", options.randomizeSeed) { onUpdate(options.copy(randomizeSeed = it).validated()) }
 
     SectionHeader("Advanced")
     BooleanChip("Tiling", options.tiling) { onUpdate(options.copy(tiling = it).validated()) }

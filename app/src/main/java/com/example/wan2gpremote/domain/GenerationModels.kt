@@ -6,6 +6,47 @@ enum class ModelType(val id: String, val label: String) {
     ACE_STEP_15("ace_step_15", "Ace Step 1.5")
 }
 
+enum class GenerationMode(val id: String, val label: String) {
+    TxtToImage("txt_to_image", "Text → Image"),
+    ImgToImg("img_to_img", "Image → Image"),
+    EditImage("edit_image", "Edit Image"),
+    TxtToVideo("txt_to_video", "Text → Video"),
+    ImgToVideo("img_to_video", "Image → Video"),
+    ExtendVideo("extend_video", "Extend Video")
+}
+
+data class ModeInputOptions(
+    val prompt: String = "",
+    val negativePrompt: String = "",
+    val sourceImagePath: String = "",
+    val sourceVideoPath: String = "",
+    val maskPath: String = "",
+    val extendSeconds: Int = 4,
+    val extendFromFrame: Int = -1,
+)
+
+fun supportedModesForModel(modelType: ModelType): Set<GenerationMode> = when (modelType) {
+    ModelType.LTX2 -> setOf(
+        GenerationMode.TxtToVideo,
+        GenerationMode.ImgToVideo,
+        GenerationMode.ExtendVideo,
+    )
+
+    ModelType.FLUX_KLEIN_9B -> setOf(
+        GenerationMode.TxtToImage,
+        GenerationMode.ImgToImg,
+        GenerationMode.EditImage,
+    )
+
+    ModelType.ACE_STEP_15 -> setOf(
+        GenerationMode.TxtToVideo,
+        GenerationMode.ImgToVideo,
+    )
+}
+
+fun isModeSupportedByModel(mode: GenerationMode, modelType: ModelType): Boolean =
+    supportedModesForModel(modelType).contains(mode)
+
 data class Ltx2Options(
     val width: Int = 1024,
     val height: Int = 576,
@@ -83,6 +124,8 @@ data class AceStep15Options(
 data class GenerationSettings(
     val serverIp: String = "",
     val selectedModel: ModelType = ModelType.LTX2,
+    val selectedMode: GenerationMode = GenerationMode.TxtToVideo,
+    val modeInputs: Map<GenerationMode, ModeInputOptions> = GenerationMode.entries.associateWith { ModeInputOptions() },
     val ltx2: Ltx2Options = Ltx2Options(),
     val flux: FluxKlein9bOptions = FluxKlein9bOptions(),
     val ace: AceStep15Options = AceStep15Options(),

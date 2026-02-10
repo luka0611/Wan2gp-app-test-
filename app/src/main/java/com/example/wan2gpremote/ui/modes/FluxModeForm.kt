@@ -9,7 +9,6 @@ import com.example.wan2gpremote.ui.components.DropdownField
 import com.example.wan2gpremote.ui.components.FloatSliderField
 import com.example.wan2gpremote.ui.components.IntField
 import com.example.wan2gpremote.ui.components.SectionHeader
-import com.example.wan2gpremote.ui.components.StringField
 
 @Composable
 fun FluxModeForm(options: FluxKlein9bOptions, onUpdate: (FluxKlein9bOptions) -> Unit) {
@@ -28,12 +27,6 @@ fun FluxModeForm(options: FluxKlein9bOptions, onUpdate: (FluxKlein9bOptions) -> 
     DropdownField("Scheduler", options.scheduler, schedulers) { onUpdate(options.copy(scheduler = it).validated()) }
     FloatSliderField("Strength (0.0-1.0)", options.strength, 0f..1f) { onUpdate(options.copy(strength = it).validated()) }
     FloatSliderField("Denoise (0.0-1.0)", options.denoise, 0f..1f) { onUpdate(options.copy(denoise = it).validated()) }
-
-    SectionHeader("Prompting")
-    StringField("Prompt (optional)", options.prompt) { onUpdate(options.copy(prompt = it).validated()) }
-    StringField("Negative Prompt (optional)", options.negativePrompt) { onUpdate(options.copy(negativePrompt = it).validated()) }
-    StringField("Seed (optional integer)", options.seed) { onUpdate(options.copy(seed = it).validated()) }
-    BooleanChip("Randomize Seed", options.randomizeSeed) { onUpdate(options.copy(randomizeSeed = it).validated()) }
 
     SectionHeader("Advanced")
     BooleanChip("Safety checker", options.safetyChecker) { onUpdate(options.copy(safetyChecker = it).validated()) }

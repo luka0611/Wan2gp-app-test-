@@ -30,12 +30,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.wan2gpremote.data.preferences.SettingsStore
 import com.example.wan2gpremote.data.storage.GalleryStorage
+import com.example.wan2gpremote.domain.GenerationMode
 import com.example.wan2gpremote.domain.ModelType
+import com.example.wan2gpremote.domain.ModeInputOptions
+import com.example.wan2gpremote.domain.isModeSupportedByModel
+import com.example.wan2gpremote.domain.supportedModesForModel
 import com.example.wan2gpremote.ui.components.OptionCard
 import com.example.wan2gpremote.ui.components.StringField
 import com.example.wan2gpremote.ui.models.AceModelSection
 import com.example.wan2gpremote.ui.models.FluxModelSection
 import com.example.wan2gpremote.ui.models.LtxModelSection
+import com.example.wan2gpremote.ui.modes.GenerationModeInputPanel
 import com.example.wan2gpremote.viewmodel.GenerationRunState
 import com.example.wan2gpremote.viewmodel.GenerationViewModel
 
@@ -86,6 +91,35 @@ fun MainScreen() {
                         label = { Text(type.label) }
                     )
                 }
+            }
+
+            Text("Select generation mode", style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GenerationMode.entries.forEach { mode ->
+                    val isSupported = isModeSupportedByModel(mode, uiState.settings.selectedModel)
+                    FilterChip(
+                        selected = uiState.settings.selectedMode == mode,
+                        onClick = { vm.selectMode(mode) },
+                        enabled = isSupported,
+                        label = { Text(mode.label) }
+                    )
+                }
+            }
+
+            val supportedModes = supportedModesForModel(uiState.settings.selectedModel)
+            Text(
+                text = "Compatible modes for ${uiState.settings.selectedModel.label}: ${supportedModes.joinToString { it.label }}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+
+            OptionCard("Mode inputs") {
+                GenerationModeInputPanel(
+                    mode = uiState.settings.selectedMode,
+                    inputs = uiState.settings.modeInputs[uiState.settings.selectedMode]
+                        ?: ModeInputOptions(),
+                    onUpdate = { vm.updateModeInputs(uiState.settings.selectedMode, it) }
+                )
             }
 
             when (uiState.settings.selectedModel) {
